@@ -30,13 +30,14 @@ int lineLength = 10;
 int bgColor = 255;
 color fgColor = color(0, 0, 0);
 
-ArrayList<PVector> basePoints = new ArrayList<PVector>();  
+ArrayList<PVector> basePoints = new ArrayList<PVector>();
+PVector[] pvArray = new PVector[0]; 
 
 void setup(){
   // size(800, 600);
   size(800, 600, P3D);
 
-  ortho();
+  //ortho();
   smooth(8);
 
   centerX = width/2; 
@@ -54,7 +55,7 @@ void drawSegment(PVector[] current, PVector[] next) {
   line(current[last].x, current[last].y, current[last].z, next[last].x, next[last].y, next[last].z);
 
   for(int i = 1; i < last; i++) {
-    drawLine(current[i], next[i], random(14.0, 16.0));
+    drawLine(current[i], next[i], 10.0);
   }
 }
 
@@ -68,15 +69,17 @@ void drawLine(PVector p1, PVector p2, float extra) {
   
   PVector wobble1 = p1.get();
   PVector wobble2 = end.get();
-  // line(current.x, current.y, current.z, next.x, next.y, next.z);
-  // line(wobble1.x, wobble1.y, wobble1.z, wobble2.x, wobble2.y, wobble2.z);
-  curve(wobble1.x, wobble1.y, wobble1.z, start.x, start.y, start.z, end.x, end.y, end.z, wobble2.x, wobble2.y, wobble2.z);
+
+  // wobble1.add(PVector.random3D());
+  // wobble2.add(PVector.random3D());
+  
+  line(wobble1.x, wobble1.y, wobble1.z, wobble2.x, wobble2.y, wobble2.z);
+  // curve(wobble1.x, wobble1.y, wobble1.z, start.x, start.y, start.z, end.x, end.y, end.z, wobble2.x, wobble2.y, wobble2.z);
 }
 
-ArrayList<PVector> generateSegment(PVector current, PVector next) {
+ArrayList<PVector> generateSegment(PVector current, PVector next, int r, float displacement) {
   ArrayList<PVector> pointSet = new ArrayList<PVector>();
 
-  int r = 20;
   float phi = -atan2(current.y - next.y, current.x - next.x);   
   float step = PI / linesPerElement;
   
@@ -84,7 +87,7 @@ ArrayList<PVector> generateSegment(PVector current, PVector next) {
   point(next.x, next.y, next.z);
 
   for(int i=0; i<linesPerElement; i++) {
-    float theta = HALF_PI + i * step;
+    float theta = HALF_PI + displacement + i * step;
 
     float xPos = current.x + r * sin(theta) * sin(phi);
     float yPos = current.y + r * sin(theta) * cos(phi);
@@ -111,9 +114,6 @@ void render(ArrayList<PVector> basePoints) {
   PVector next;
   ArrayList<PVector> currentSegment;
   ArrayList<PVector> nextSegment;
-  PVector[] type = new PVector[0];
-  stroke(fgColor);
-  strokeWeight(0.5);
 
   if (basePoints.size() < 2) {
     return;
@@ -121,7 +121,7 @@ void render(ArrayList<PVector> basePoints) {
 
   current = i.next();
   next = i.next();
-  currentSegment = generateSegment(current, next);
+  currentSegment = generateSegment(current, next, 30, 0);
   line(current.x, current.y, current.z, next.x, next.y, next.z);
   
   while(i.hasNext()) {
@@ -130,11 +130,54 @@ void render(ArrayList<PVector> basePoints) {
     next = i.next();
 
     line(current.x, current.y, current.z, next.x, next.y, next.z);
-    nextSegment = generateSegment(current, next);
+    nextSegment = generateSegment(current, next, 20, 0);
 
-    drawSegment(currentSegment.toArray(type), nextSegment.toArray(type));
+    drawSegment(currentSegment.toArray(pvArray), nextSegment.toArray(pvArray));
     currentSegment = nextSegment;
   }
+}
+
+ArrayList<PVector> createSplinePoints(ArrayList<PVector> basePoints, int resolution) {
+  ArrayList<PVector> result =  new ArrayList<PVector>();
+
+  if(basePoints.size() < 3) {
+    return result;
+  } 
+
+  ArrayList<PVector> tmpPoints = new ArrayList<PVector>();
+  // tmpPoints.add(basePoints.get(1));
+  tmpPoints.add(basePoints.get(0));
+  tmpPoints.addAll(basePoints);
+  tmpPoints.add(basePoints.get(basePoints.size() - 1));
+  // tmpPoints.add(basePoints.get(basePoints.size() - 2));
+
+  PVector[] points = tmpPoints.toArray(pvArray);
+  PVector t1, t2, p;
+  float c1, c2, c3, c4, x, y;
+
+  float tension = 0.5;
+  float step = 1.0/resolution;
+  
+  for(int i=1; i < points.length - 2; i++) {
+    for (float st = 0; st <= 1.0; st += step) {
+      t1 = new PVector((points[i+1].x - points[i-1].x) * tension, (points[i+1].y - points[i-1].y) * tension, 0.0);
+      t2 = new PVector((points[i+2].x - points[i].x) * tension, (points[i+2].y - points[i].y) * tension, 0.0);
+      
+      c1 =   2 * pow(st, 3)  - 3 * pow(st, 2) + 1; 
+      c2 = -(2 * pow(st, 3)) + 3 * pow(st, 2); 
+      c3 =       pow(st, 3)  - 2 * pow(st, 2) + st; 
+      c4 =       pow(st, 3)  -     pow(st, 2);
+       
+      x = c1 * points[i].x + c2 * points[i+1].x + c3 * t1.x + c4 * t2.x;
+      y = c1 * points[i].y + c2 * points[i+1].y + c3 * t1.y + c4 * t2.y;
+
+      p = new PVector(x, y, 0);
+      result.add(p);      
+      point(p.x, p.y, p.z);
+    }
+  }
+
+  return result;
 }
 
 void clearHelperPoints(ArrayList<PVector> points) {
@@ -159,15 +202,22 @@ void drawHelperPoint(PVector p) {
 // events
 void mousePressed() {
   PVector p;
+  ArrayList<PVector> pointSet;
 
   if (mouseButton == LEFT) {
-    p = new PVector(mouseX, mouseY, 100);
+    p = new PVector(mouseX, mouseY, 0);
     drawHelperPoint(p);    
     basePoints.add(p);
   } else if (mouseButton == RIGHT) {
     println("Rendering");
     clearHelperPoints(basePoints);
-    render(basePoints);
+
+    stroke(fgColor);
+    pointSet = createSplinePoints(basePoints, 10);
+    
+    strokeWeight(0.5);
+    render(pointSet);
+    
     basePoints.clear();
   }
 }
