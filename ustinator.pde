@@ -33,26 +33,44 @@ color fgColor = color(0, 0, 0);
 ArrayList<PVector> basePoints = new ArrayList<PVector>();  
 
 void setup(){
+  // size(800, 600);
   size(800, 600, P3D);
+
   ortho();
-  smooth(4);
+  smooth(8);
 
   centerX = width/2; 
   centerY = height/2;
 
   background(bgColor);
   stroke(fgColor);
-  strokeWeight(3);
 }
 
 void drawSegment(PVector[] current, PVector[] next) {
-  // connect first
-  // connect last
   // TODO: make this work for differing array sizes.
   int last = current.length - 1;
 
   line(current[0].x, current[0].y, current[0].z, next[0].x, next[0].y, next[0].z);
   line(current[last].x, current[last].y, current[last].z, next[last].x, next[last].y, next[last].z);
+
+  for(int i = 1; i < last; i++) {
+    drawLine(current[i], next[i], random(14.0, 16.0));
+  }
+}
+
+void drawLine(PVector p1, PVector p2, float extra) {
+  PVector line  = PVector.sub(p2, p1);
+  PVector start = p1.get();
+  PVector end = line.get();
+   
+  end.setMag(line.mag() + extra);
+  end.add(start);
+  
+  PVector wobble1 = p1.get();
+  PVector wobble2 = end.get();
+  // line(current.x, current.y, current.z, next.x, next.y, next.z);
+  // line(wobble1.x, wobble1.y, wobble1.z, wobble2.x, wobble2.y, wobble2.z);
+  curve(wobble1.x, wobble1.y, wobble1.z, start.x, start.y, start.z, end.x, end.y, end.z, wobble2.x, wobble2.y, wobble2.z);
 }
 
 ArrayList<PVector> generateSegment(PVector current, PVector next) {
@@ -94,11 +112,8 @@ void render(ArrayList<PVector> basePoints) {
   ArrayList<PVector> currentSegment;
   ArrayList<PVector> nextSegment;
   PVector[] type = new PVector[0];
-
-
-
   stroke(fgColor);
-  strokeWeight(3);
+  strokeWeight(0.5);
 
   if (basePoints.size() < 2) {
     return;
@@ -146,7 +161,7 @@ void mousePressed() {
   PVector p;
 
   if (mouseButton == LEFT) {
-    p = new PVector(mouseX, mouseY, 0);
+    p = new PVector(mouseX, mouseY, 100);
     drawHelperPoint(p);    
     basePoints.add(p);
   } else if (mouseButton == RIGHT) {
@@ -156,7 +171,6 @@ void mousePressed() {
     basePoints.clear();
   }
 }
-
 
 void keyReleased() {
   if (key == 's' || key == 'S') saveFrame(timestamp()+"_##.png");
