@@ -17,13 +17,14 @@
 import processing.pdf.*;
 import java.util.Calendar;
 import java.util.ListIterator;
+import java.util.Vector;
 
 boolean recordPDF = false;
 boolean freeze = false;
 int centerX;
 int centerY;
 
-int linesPerElement = 10;
+int linesPerElement = 16;
 int lineDistance = 5;
 int lineLength = 10;
 
@@ -37,7 +38,7 @@ void setup(){
   // size(800, 600);
   size(800, 600, P3D);
 
-  //ortho();
+  ortho();
   smooth(8);
 
   centerX = width/2; 
@@ -47,38 +48,33 @@ void setup(){
   stroke(fgColor);
 }
 
-void drawSegment(PVector[] current, PVector[] next) {
+void drawSegment(PVector[] current, PVector[] next, PVector[] nextCurrent) {
   // TODO: make this work for differing array sizes.
   int last = current.length - 1;
+  float scale = random(1.05, 1.25);
 
-  line(current[0].x, current[0].y, current[0].z, next[0].x, next[0].y, next[0].z);
-  line(current[last].x, current[last].y, current[last].z, next[last].x, next[last].y, next[last].z);
+  // make sure outer lines are not displaced
+  line(current[0].x, current[0].y, current[0].z, nextCurrent[0].x, nextCurrent[0].y, nextCurrent[0].z);
+  line(current[last].x, current[last].y, current[last].z, nextCurrent[last].x, nextCurrent[last].y, nextCurrent[last].z);
 
-  for(int i = 1; i < last; i++) {
-    drawLine(current[i], next[i], 10.0);
+   for(int i = 1; i < last; i++) {
+     drawLine(current[i], next[i], scale);
   }
 }
 
-void drawLine(PVector p1, PVector p2, float extra) {
-  PVector line  = PVector.sub(p2, p1);
-  PVector start = p1.get();
-  PVector end = line.get();
-   
-  end.setMag(line.mag() + extra);
-  end.add(start);
-  
-  PVector wobble1 = p1.get();
-  PVector wobble2 = end.get();
+void drawLine(PVector start, PVector end, float scale) {
+  PVector lineVector =  PVector.sub(end, start);
+  lineVector.setMag(lineVector.mag() + 5.0);
 
-  // wobble1.add(PVector.random3D());
-  // wobble2.add(PVector.random3D());
+  PVector p1 = start.get();
+  PVector p2 = PVector.add(start, lineVector);
   
-  line(wobble1.x, wobble1.y, wobble1.z, wobble2.x, wobble2.y, wobble2.z);
+  line(p1.x, p1.y, p1.z, p2.x, p2.y, p2.z);
   // curve(wobble1.x, wobble1.y, wobble1.z, start.x, start.y, start.z, end.x, end.y, end.z, wobble2.x, wobble2.y, wobble2.z);
 }
 
-ArrayList<PVector> generateSegment(PVector current, PVector next, int r, float displacement) {
-  ArrayList<PVector> pointSet = new ArrayList<PVector>();
+Vector<PVector> generateSegment(PVector current, PVector next, int r, float displacement) {
+  Vector<PVector> pointSet = new Vector<PVector>(linesPerElement);
 
   float phi = -atan2(current.y - next.y, current.x - next.x);   
   float step = PI / linesPerElement;
@@ -108,48 +104,49 @@ void draw() {
   // keep draw, so events work
 }
 
-void render(ArrayList<PVector> basePoints) {
-  ListIterator<PVector> i = basePoints.listIterator();
-  PVector current;
-  PVector next;
-  ArrayList<PVector> currentSegment;
-  ArrayList<PVector> nextSegment;
-
-  if (basePoints.size() < 2) {
+void render(PVector[] points) {
+  if (points.length < 3) {
+    println("Not enough enough points to render");
     return;
   }
 
-  current = i.next();
-  next = i.next();
-  currentSegment = generateSegment(current, next, 30, 0);
-  line(current.x, current.y, current.z, next.x, next.y, next.z);
-  
-  while(i.hasNext()) {
-    
-    current = next;
-    next = i.next();
+  Vector<PVector>[] segments = new Vector[points.length*2 - 2];  
 
-    line(current.x, current.y, current.z, next.x, next.y, next.z);
-    nextSegment = generateSegment(current, next, 20, 0);
+  PVector current;
+  PVector next;
 
-    drawSegment(currentSegment.toArray(pvArray), nextSegment.toArray(pvArray));
-    currentSegment = nextSegment;
+  Vector<PVector> currentSegment;
+  Vector<PVector> nextSegment;
+
+  float displacement = 0.0;
+
+  for(int i=0; i < points.length - 1; i++) { 
+    current = points[i];
+    next = points[i+1];
+    // create displaced segment on even index with last displacement
+    segments[2*i] = generateSegment(current, next, 20, displacement);
+    // change displacement
+    displacement = random(0.2, 0.4);
+    // create displaced segment on odd index
+    segments[2*i+1] = generateSegment(current, next, 20, displacement);
+  }
+
+  for(int i=1; i < segments.length - 2; i += 2) {
+    drawSegment(segments[i].toArray(pvArray), segments[i+1].toArray(pvArray), segments[i+2].toArray(pvArray));
   }
 }
 
-ArrayList<PVector> createSplinePoints(ArrayList<PVector> basePoints, int resolution) {
-  ArrayList<PVector> result =  new ArrayList<PVector>();
-
+PVector[] createSplinePoints(ArrayList<PVector> basePoints, int resolution) {
   if(basePoints.size() < 3) {
-    return result;
+    return new PVector[0];
   } 
 
+  ArrayList<PVector> result =  new ArrayList<PVector>();
   ArrayList<PVector> tmpPoints = new ArrayList<PVector>();
-  // tmpPoints.add(basePoints.get(1));
+
   tmpPoints.add(basePoints.get(0));
   tmpPoints.addAll(basePoints);
   tmpPoints.add(basePoints.get(basePoints.size() - 1));
-  // tmpPoints.add(basePoints.get(basePoints.size() - 2));
 
   PVector[] points = tmpPoints.toArray(pvArray);
   PVector t1, t2, p;
@@ -177,20 +174,7 @@ ArrayList<PVector> createSplinePoints(ArrayList<PVector> basePoints, int resolut
     }
   }
 
-  return result;
-}
-
-void clearHelperPoints(ArrayList<PVector> points) {
-  PVector p;
-  ListIterator<PVector> i = points.listIterator();
-
-  strokeWeight(3);
-  stroke(bgColor);
-  
-  while(i.hasNext()) {
-    p = i.next();
-    point(p.x, p.y, p.z);    
-  }
+  return result.toArray(pvArray);
 }
 
 void drawHelperPoint(PVector p) {
@@ -202,7 +186,7 @@ void drawHelperPoint(PVector p) {
 // events
 void mousePressed() {
   PVector p;
-  ArrayList<PVector> pointSet;
+  PVector[] pointSet;
 
   if (mouseButton == LEFT) {
     p = new PVector(mouseX, mouseY, 0);
@@ -210,13 +194,15 @@ void mousePressed() {
     basePoints.add(p);
   } else if (mouseButton == RIGHT) {
     println("Rendering");
-    clearHelperPoints(basePoints);
-
+    
+    background(bgColor);
     stroke(fgColor);
+
     pointSet = createSplinePoints(basePoints, 10);
     
     strokeWeight(0.5);
     render(pointSet);
+    // render(basePoints);
     
     basePoints.clear();
   }
@@ -252,18 +238,8 @@ void keyReleased() {
   else loop();
 }
 
-
 // timestamp
 String timestamp() {
   Calendar now = Calendar.getInstance();
   return String.format("%1$ty%1$tm%1$td_%1$tH%1$tM%1$tS", now);
 }
-
-
-
-
-
-
-
-
-
