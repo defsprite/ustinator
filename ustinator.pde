@@ -31,8 +31,9 @@ PVector[] pvArray = new PVector[0];
 
 void setup(){
   size(1024, 768, P3D);
-  ortho();
+  //ortho();
   smooth(8);
+  fill(bgColor);
 
   background(bgColor);
   stroke(fgColor);
@@ -42,6 +43,17 @@ void drawSegment(PVector[] current, PVector[] next, PVector[] nextCurrent) {
   // TODO: make this work for differing array sizes.
   int last = current.length - 1;
   float extra = 5.0; //random(1.05, 1.25);
+
+  // draw background quad, so segment seems "solid"
+  stroke(bgColor);
+  beginShape();
+  vertex(current[0].x, current[0].y, current[0].z);
+  vertex(nextCurrent[0].x, nextCurrent[0].y, nextCurrent[0].z);
+  vertex(nextCurrent[last].x, nextCurrent[last].y, nextCurrent[last].z);
+  vertex(current[last].x, current[last].y, current[last].z);
+  vertex(current[0].x, current[0].y, current[0].z);
+  endShape(CLOSE);
+  stroke(fgColor);
 
   // make sure outer lines are not displaced
   line(current[0].x, current[0].y, current[0].z, nextCurrent[0].x, nextCurrent[0].y, nextCurrent[0].z);
@@ -106,7 +118,7 @@ Vector<PVector> generateSegment(PVector current, PVector next, float r, float di
   point(next.x, next.y, next.z);
 
   for(int i=0; i<linesPerElement; i++) {
-    theta = HALF_PI + displacement + i * step;
+    theta = -HALF_PI + displacement + i * step;
 
     x = current.x + r * sin(theta) * sin(phi);
     y = current.y + r * sin(theta) * cos(phi);
