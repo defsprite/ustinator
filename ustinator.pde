@@ -19,30 +19,20 @@ import java.util.Calendar;
 import java.util.ListIterator;
 import java.util.Vector;
 
-boolean recordPDF = false;
-boolean freeze = false;
-int centerX;
-int centerY;
+boolean drawWayPoints = false;
 
 int linesPerElement = 16;
-int lineDistance = 5;
-int lineLength = 10;
-
-int bgColor = 255;
+int bgColor = color(255, 255, 255);
 color fgColor = color(0, 0, 0);
+int splineResolution = 10;
 
 ArrayList<PVector> basePoints = new ArrayList<PVector>();
 PVector[] pvArray = new PVector[0]; 
 
 void setup(){
-  // size(800, 600);
-  size(800, 600, P3D);
-
+  size(1024, 768, P3D);
   ortho();
   smooth(8);
-
-  centerX = width/2; 
-  centerY = height/2;
 
   background(bgColor);
   stroke(fgColor);
@@ -51,20 +41,26 @@ void setup(){
 void drawSegment(PVector[] current, PVector[] next, PVector[] nextCurrent) {
   // TODO: make this work for differing array sizes.
   int last = current.length - 1;
-  float scale = random(1.05, 1.25);
+  float extra = 5.0; //random(1.05, 1.25);
 
   // make sure outer lines are not displaced
   line(current[0].x, current[0].y, current[0].z, nextCurrent[0].x, nextCurrent[0].y, nextCurrent[0].z);
   line(current[last].x, current[last].y, current[last].z, nextCurrent[last].x, nextCurrent[last].y, nextCurrent[last].z);
 
-   for(int i = 1; i < last; i++) {
-     drawLine(current[i], next[i], scale);
+  for(int i = 1; i < last; i++) {
+    drawLine(current[i], next[i], extra);
   }
 }
 
-void drawLine(PVector start, PVector end, float scale) {
+void drawEnd(PVector[] current, PVector endpoint) {
+  for(int i = 0; i < current.length; i++) {
+    drawLine(current[i], endpoint, 0.0);
+  }
+}
+
+void drawLine(PVector start, PVector end, float extra) {
   PVector lineVector =  PVector.sub(end, start);
-  lineVector.setMag(lineVector.mag() + 5.0);
+  lineVector.setMag(lineVector.mag() + extra);
 
   PVector p1 = start.get();
   PVector p2 = PVector.add(start, lineVector);
@@ -73,24 +69,51 @@ void drawLine(PVector start, PVector end, float scale) {
   // curve(wobble1.x, wobble1.y, wobble1.z, start.x, start.y, start.z, end.x, end.y, end.z, wobble2.x, wobble2.y, wobble2.z);
 }
 
-Vector<PVector> generateSegment(PVector current, PVector next, int r, float displacement) {
+PVector[] generateEnvelope(int numPoints, float xLength) {
+  PVector[] result;
+  ArrayList<PVector> basePoints = new ArrayList<PVector>();
+  
+  int numBasePoints = (numPoints / splineResolution) + 1;
+  int baseSize = 15, spread = 10;
+  println("envelope spline basePoints: " + numBasePoints); 
+  //float xStep = xLength / numBasePoints;
+  float x, y;
+  PVector p;
+
+  for(int i = 0; i < numBasePoints - 1; i++) {
+    //p = new PVector(i * xStep, maxValue + random(-spread, spread), 0.0);
+    p = new PVector(i * 10, random(baseSize-spread, baseSize+spread), 0.0);
+    basePoints.add(p);
+    point(p.x, p.y, p.z);
+  }  
+  p = new PVector(numBasePoints * 10, 0.0, 0.0);
+  basePoints.add(p);
+  
+  result = createSplinePoints(basePoints, splineResolution);
+  println("envelope size: " + result.length);
+  return result;
+}
+
+Vector<PVector> generateSegment(PVector current, PVector next, float r, float displacement) {
   Vector<PVector> pointSet = new Vector<PVector>(linesPerElement);
 
+  PVector p;
+  float x, y, z, theta;
   float phi = -atan2(current.y - next.y, current.x - next.x);   
   float step = PI / linesPerElement;
-  
+
   point(current.x, current.y, current.z);
   point(next.x, next.y, next.z);
 
   for(int i=0; i<linesPerElement; i++) {
-    float theta = HALF_PI + displacement + i * step;
+    theta = HALF_PI + displacement + i * step;
 
-    float xPos = current.x + r * sin(theta) * sin(phi);
-    float yPos = current.y + r * sin(theta) * cos(phi);
-    float zPos = current.z + r * cos(theta);  
-    // println(xPos + " " + yPos + " " + zPos );
+    x = current.x + r * sin(theta) * sin(phi);
+    y = current.y + r * sin(theta) * cos(phi);
+    z = current.z + r * cos(theta);  
+    // println(x + " " + y + " " + z);
 
-    PVector p = new PVector(xPos, yPos, zPos);
+    p = new PVector(x, y, z);
 
     point(p.x, p.y, p.z);
     pointSet.add(p);
@@ -109,37 +132,48 @@ void render(PVector[] points) {
     println("Not enough enough points to render");
     return;
   }
+  
+  println("no. of points " + points.length);
 
   Vector<PVector>[] segments = new Vector[points.length*2 - 2];  
 
-  PVector current;
-  PVector next;
-
-  Vector<PVector> currentSegment;
-  Vector<PVector> nextSegment;
-
+  PVector current, next;
+  Vector<PVector> currentSegment, nextSegment;
   float displacement = 0.0;
+
+  stroke(fgColor);
+  strokeWeight(0.5);
+
+  float vectorLength = PVector.sub(points[points.length - 1], points[0]).mag();
+  println("totalLength: "+vectorLength);
+
+  PVector[] envelope = generateEnvelope(points.length, vectorLength); 
 
   for(int i=0; i < points.length - 1; i++) { 
     current = points[i];
     next = points[i+1];
+    float radius = envelope[i].y * 2;
     // create displaced segment on even index with last displacement
-    segments[2*i] = generateSegment(current, next, 20, displacement);
+    segments[2*i] = generateSegment(current, next, radius, displacement);
     // change displacement
-    displacement = random(0.2, 0.4);
+    displacement = i % 2 == 0 ? 0.2 : 0.3;
     // create displaced segment on odd index
-    segments[2*i+1] = generateSegment(current, next, 20, displacement);
+    segments[2*i+1] = generateSegment(current, next, radius, displacement);
   }
 
   for(int i=1; i < segments.length - 2; i += 2) {
     drawSegment(segments[i].toArray(pvArray), segments[i+1].toArray(pvArray), segments[i+2].toArray(pvArray));
   }
+
+  drawEnd(segments[segments.length - 1].toArray(pvArray), points[points.length - 1]);
 }
 
 PVector[] createSplinePoints(ArrayList<PVector> basePoints, int resolution) {
   if(basePoints.size() < 3) {
     return new PVector[0];
   } 
+
+  println("spline base points: "+basePoints.size());
 
   ArrayList<PVector> result =  new ArrayList<PVector>();
   ArrayList<PVector> tmpPoints = new ArrayList<PVector>();
@@ -169,11 +203,12 @@ PVector[] createSplinePoints(ArrayList<PVector> basePoints, int resolution) {
       y = c1 * points[i].y + c2 * points[i+1].y + c3 * t1.y + c4 * t2.y;
 
       p = new PVector(x, y, 0);
+      if(drawWayPoints) { point(p.x, p.y, p.z); };
       result.add(p);      
-      point(p.x, p.y, p.z);
     }
   }
 
+  println("spline result points: "+result.size());
   return result.toArray(pvArray);
 }
 
@@ -189,57 +224,28 @@ void mousePressed() {
   PVector[] pointSet;
 
   if (mouseButton == LEFT) {
-    p = new PVector(mouseX, mouseY, 0);
-    drawHelperPoint(p);    
+    p = new PVector(mouseX, mouseY, 0);    
+    drawHelperPoint(p);
     basePoints.add(p);
   } else if (mouseButton == RIGHT) {
-    println("Rendering");
-    
-    background(bgColor);
-    stroke(fgColor);
-
-    pointSet = createSplinePoints(basePoints, 10);
-    
-    strokeWeight(0.5);
+    clearHelperPoints();
+    pointSet = createSplinePoints(basePoints, splineResolution);
     render(pointSet);
-    // render(basePoints);
-    
     basePoints.clear();
   }
 }
 
-void keyReleased() {
-  if (key == 's' || key == 'S') saveFrame(timestamp()+"_##.png");
-  if (key == DELETE || key == BACKSPACE) background(255);
+void clearHelperPoints() {
+  PVector p;
+  ListIterator<PVector> i = basePoints.listIterator();
 
-  // ------ pdf export ------
-  // press 'r' to start pdf recording and 'e' to stop it
-  // ONLY by pressing 'e' the pdf is saved to disk!
-  if (key =='r' || key =='R') {
-    if (recordPDF == false) {
-      beginRecord(PDF, timestamp()+".pdf");
-      println("recording started");
-      recordPDF = true;
-      stroke(0, 50);
-    }
-  } 
-  else if (key == 'e' || key =='E') {
-    if (recordPDF) {
-      println("recording stopped");
-      endRecord();
-      recordPDF = false;
-      background(255); 
-    }
-  } 
+  strokeWeight(3);  
+  stroke(bgColor);
 
-  // switch draw loop on/off
-  if (key == 'f' || key == 'F') freeze = !freeze;
-  if (freeze == true) noLoop();
-  else loop();
-}
+  while(i.hasNext()) {
+    p = i.next(); 
+    point(p.x, p.y, p.z);
+  }
 
-// timestamp
-String timestamp() {
-  Calendar now = Calendar.getInstance();
-  return String.format("%1$ty%1$tm%1$td_%1$tH%1$tM%1$tS", now);
+  stroke(fgColor);
 }
