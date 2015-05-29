@@ -26,6 +26,9 @@ int bgColor = color(255, 255, 255);
 color fgColor = color(0, 0, 0);
 int splineResolution = 10;
 
+int baseRadius = 10;
+int radiusSpread = 5;
+
 ArrayList<PVector> basePoints = new ArrayList<PVector>();
 PVector[] pvArray = new PVector[0]; 
 
@@ -86,7 +89,6 @@ PVector[] generateEnvelope(int numPoints, float xLength) {
   ArrayList<PVector> basePoints = new ArrayList<PVector>();
   
   int numBasePoints = (numPoints / splineResolution) + 1;
-  int baseSize = 15, spread = 10;
   println("envelope spline basePoints: " + numBasePoints); 
   //float xStep = xLength / numBasePoints;
   float x, y;
@@ -94,7 +96,7 @@ PVector[] generateEnvelope(int numPoints, float xLength) {
 
   for(int i = 0; i < numBasePoints - 1; i++) {
     //p = new PVector(i * xStep, maxValue + random(-spread, spread), 0.0);
-    p = new PVector(i * 10, random(baseSize-spread, baseSize+spread), 0.0);
+    p = new PVector(i * 10, random(baseRadius - radiusSpread, baseRadius + radiusSpread), 0.0);
     basePoints.add(p);
     point(p.x, p.y, p.z);
   }  
