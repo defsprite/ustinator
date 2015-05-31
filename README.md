@@ -15,6 +15,5 @@ The sketch takes the helper points and generates spline points in between them. 
 ### TODO
 
 - clean up
-- make generational parameters configurable
-- extract a `Worm` class for easier anmation
+- make generational parameters live configurable
 - add some wobble animations to make it really scary

@@ -27,7 +27,7 @@ class Worm {
 	    next = points[i+1];
       float radius1 = envelope[i].y * 2;
 	    float radius2 = envelope[i+1].y * 2;
-	    float displacement = i % 2 ==0 ? 0.2 : 0.3;
+	    float displacement = random(-0.15, 0.15);
       segments[i] = new Segment(current, next, radius1, radius2, displacement);
 	  }
   }

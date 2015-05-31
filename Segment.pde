@@ -17,7 +17,8 @@ class Segment {
     endPoint = next;
     startRadius = r1;
     endRadius = r2;
-    displacement = d;    
+    displacement = d;
+    linesPerSegment = floor((startRadius) / 1.5);
     init();
 	}
 
