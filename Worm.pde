@@ -20,16 +20,15 @@ class Worm {
 	  segments = new Segment[points.length - 1];  
 
 	  PVector current, next;
-	  Segment currentSegment, nextSegment;
-	  float displacement = 0.3;
-
-	  PVector[] envelope = generateEnvelope(points.length); 
+	  PVector[] envelope = generateEnvelope(points.length);
 
 	  for(int i=0; i < points.length - 1; i++) { 
 	    current = points[i];
 	    next = points[i+1];
-	    float radius = envelope[i].y * 2;
-	    segments[i] = new Segment(current, next, radius, displacement);
+      float radius1 = envelope[i].y * 2;
+	    float radius2 = envelope[i+1].y * 2;
+	    float displacement = i % 2 ==0 ? 0.2 : 0.3;
+      segments[i] = new Segment(current, next, radius1, radius2, displacement);
 	  }
   }
 
@@ -38,43 +37,33 @@ class Worm {
     stroke(fgColor);
     strokeWeight(0.5);
 
-    for(int i=0; i < segments.length - 1; i++) {
-      drawSegment(segments[i], segments[i+1], i % 2 == 0);
+    for(int i=0; i < segments.length; i++) {
+      drawSegment(segments[i]);
     }
     // drawEnd(segments[segments.length - 1].toArray(pvArray), points[points.length - 1]);
    }
 
-   void drawSegment(Segment startSegment, Segment endSegment, boolean displaced) {
+   void drawSegment(Segment segment) {
     // TODO: make this work for differing array sizes.
-    PVector[] current = startSegment.points;
-    PVector[] next = endSegment.points;
+    PVector[] current = segment.startPoints;
+    PVector[] next = segment.endPoints;
 
     int last = current.length - 1;
     float extra = 5.0; //random(1.05, 1.25);
 
     // draw background quad, so segment seems "solid"
-    // stroke(bgColor);
-    // beginShape();
-    // vertex(current[0].x, current[0].y, current[0].z);
-    // vertex(nextCurrent[0].x, nextCurrent[0].y, nextCurrent[0].z);
-    // vertex(nextCurrent[last].x, nextCurrent[last].y, nextCurrent[last].z);
-    // vertex(current[last].x, current[last].y, current[last].z);
-    // vertex(current[0].x, current[0].y, current[0].z);
-    // endShape(CLOSE);
-    // stroke(fgColor);
+    stroke(bgColor);
+    beginShape();
+    vertex(current[0].x, current[0].y, current[0].z);
+    vertex(next[0].x, next[0].y, next[0].z);
+    vertex(next[last].x, next[last].y, next[last].z);
+    vertex(current[last].x, current[last].y, current[last].z);
+    vertex(current[0].x, current[0].y, current[0].z);
+    endShape(CLOSE);
+    stroke(fgColor);
 
-    // make sure outer lines are not displaced
-    line(current[0].x, current[0].y, current[0].z, next[0].x, next[0].y, next[0].z);
-    line(current[last].x, current[last].y, current[last].z, next[last].x, next[last].y, next[last].z);
-
-    for(int i = 1; i < last; i++) {
-      if(displaced) {
-        current = startSegment.displacedPoints;
-        next = startSegment.displacedPoints;
-        drawLine(current[i], next[i], extra);
-      } else {
-        drawLine(current[i], next[i], extra);
-      }
+    for(int i = 0; i <= last; i++) {
+      drawLine(current[i], next[i], extra);
     }
   }
 

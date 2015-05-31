@@ -1,19 +1,3 @@
-/**
- * form mophing process by connected random agents
- * 
- * MOUSE
- * click               : start a new circe
- * position x/y        : direction of floating
- * 
- * KEYS
- * 1-2                 : fill styles
- * f                   : freeze. loop on/off
- * Delete/Backspace    : clear display
- * s                   : save png
- * r                   : start pdf recording
- * e                   : stop pdf recording
- */
-
 // import processing.pdf.*;
 import java.util.Calendar;
 import java.util.ListIterator;
@@ -27,61 +11,19 @@ color fgColor = color(0, 0, 0);
 int splineResolution = 10;
 
 int baseRadius = 10;
-int radiusSpread = 5;
+int radiusSpread = 3;
 
 ArrayList<PVector> basePoints = new ArrayList<PVector>();
 PVector[] pvArray = new PVector[0]; 
 
 void setup(){
   size(1024, 768, P3D);
-  //ortho();
+  ortho();
   smooth(8);
   fill(bgColor);
 
   background(bgColor);
   stroke(fgColor);
-}
-
-void drawSegment(PVector[] current, PVector[] next, PVector[] nextCurrent) {
-  // TODO: make this work for differing array sizes.
-  int last = current.length - 1;
-  float extra = 5.0; //random(1.05, 1.25);
-
-  // draw background quad, so segment seems "solid"
-  stroke(bgColor);
-  beginShape();
-  vertex(current[0].x, current[0].y, current[0].z);
-  vertex(nextCurrent[0].x, nextCurrent[0].y, nextCurrent[0].z);
-  vertex(nextCurrent[last].x, nextCurrent[last].y, nextCurrent[last].z);
-  vertex(current[last].x, current[last].y, current[last].z);
-  vertex(current[0].x, current[0].y, current[0].z);
-  endShape(CLOSE);
-  stroke(fgColor);
-
-  // make sure outer lines are not displaced
-  line(current[0].x, current[0].y, current[0].z, nextCurrent[0].x, nextCurrent[0].y, nextCurrent[0].z);
-  line(current[last].x, current[last].y, current[last].z, nextCurrent[last].x, nextCurrent[last].y, nextCurrent[last].z);
-
-  for(int i = 1; i < last; i++) {
-    drawLine(current[i], next[i], extra);
-  }
-}
-
-void drawEnd(PVector[] current, PVector endpoint) {
-  for(int i = 0; i < current.length; i++) {
-    drawLine(current[i], endpoint, 0.0);
-  }
-}
-
-void drawLine(PVector start, PVector end, float extra) {
-  PVector lineVector =  PVector.sub(end, start);
-  lineVector.setMag(lineVector.mag() + extra);
-
-  PVector p1 = start.get();
-  PVector p2 = PVector.add(start, lineVector);
-  
-  line(p1.x, p1.y, p1.z, p2.x, p2.y, p2.z);
-  // curve(wobble1.x, wobble1.y, wobble1.z, start.x, start.y, start.z, end.x, end.y, end.z, wobble2.x, wobble2.y, wobble2.z);
 }
 
 void draw() {
