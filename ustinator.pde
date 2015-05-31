@@ -14,7 +14,7 @@
  * e                   : stop pdf recording
  */
 
-import processing.pdf.*;
+// import processing.pdf.*;
 import java.util.Calendar;
 import java.util.ListIterator;
 import java.util.Vector;
@@ -84,105 +84,56 @@ void drawLine(PVector start, PVector end, float extra) {
   // curve(wobble1.x, wobble1.y, wobble1.z, start.x, start.y, start.z, end.x, end.y, end.z, wobble2.x, wobble2.y, wobble2.z);
 }
 
-PVector[] generateEnvelope(int numPoints, float xLength) {
-  PVector[] result;
-  ArrayList<PVector> basePoints = new ArrayList<PVector>();
-  
-  int numBasePoints = (numPoints / splineResolution) + 1;
-  println("envelope spline basePoints: " + numBasePoints); 
-  //float xStep = xLength / numBasePoints;
-  float x, y;
-  PVector p;
-
-  for(int i = 0; i < numBasePoints - 1; i++) {
-    //p = new PVector(i * xStep, maxValue + random(-spread, spread), 0.0);
-    p = new PVector(i * 10, random(baseRadius - radiusSpread, baseRadius + radiusSpread), 0.0);
-    basePoints.add(p);
-    point(p.x, p.y, p.z);
-  }  
-  p = new PVector(numBasePoints * 10, 0.0, 0.0);
-  basePoints.add(p);
-  
-  result = createSplinePoints(basePoints, splineResolution);
-  println("envelope size: " + result.length);
-  return result;
-}
-
-Vector<PVector> generateSegment(PVector current, PVector next, float r, float displacement) {
-  Vector<PVector> pointSet = new Vector<PVector>(linesPerElement);
-
-  PVector p;
-  float x, y, z, theta;
-  float phi = -atan2(current.y - next.y, current.x - next.x);   
-  float step = PI / linesPerElement;
-
-  point(current.x, current.y, current.z);
-  point(next.x, next.y, next.z);
-
-  for(int i=0; i<linesPerElement; i++) {
-    theta = -HALF_PI + displacement + i * step;
-
-    x = current.x + r * sin(theta) * sin(phi);
-    y = current.y + r * sin(theta) * cos(phi);
-    z = current.z + r * cos(theta);  
-    // println(x + " " + y + " " + z);
-
-    p = new PVector(x, y, z);
-
-    point(p.x, p.y, p.z);
-    pointSet.add(p);
-  }
-
-  return pointSet;
-}
-
-
 void draw() {
   // keep draw, so events work
 }
 
 void render(PVector[] points) {
-  if (points.length < 3) {
-    println("Not enough enough points to render");
-    return;
-  }
-  
-  println("no. of points " + points.length);
-
-  Vector<PVector>[] segments = new Vector[points.length*2 - 2];  
-
-  PVector current, next;
-  Vector<PVector> currentSegment, nextSegment;
-  float displacement = 0.0;
-
-  stroke(fgColor);
-  strokeWeight(0.5);
-
-  float vectorLength = PVector.sub(points[points.length - 1], points[0]).mag();
-  println("totalLength: "+vectorLength);
-
-  PVector[] envelope = generateEnvelope(points.length, vectorLength); 
-
-  for(int i=0; i < points.length - 1; i++) { 
-    current = points[i];
-    next = points[i+1];
-    float radius = envelope[i].y * 2;
-    // create displaced segment on even index with last displacement
-    segments[2*i] = generateSegment(current, next, radius, displacement);
-    // change displacement
-    displacement = i % 2 == 0 ? 0.2 : 0.3;
-    // create displaced segment on odd index
-    segments[2*i+1] = generateSegment(current, next, radius, displacement);
-  }
-
-  for(int i=1; i < segments.length - 2; i += 2) {
-    drawSegment(segments[i].toArray(pvArray), segments[i+1].toArray(pvArray), segments[i+2].toArray(pvArray));
-  }
-
-  drawEnd(segments[segments.length - 1].toArray(pvArray), points[points.length - 1]);
+  Worm worm = new Worm(points);
+  worm.draw();
 }
 
+void drawHelperPoint(PVector p) {
+  strokeWeight(3);
+  stroke(fgColor);
+  point(p.x, p.y, p.z);  
+}
+
+// events
+void mousePressed() {
+  PVector p;
+  PVector[] pointSet;
+
+  if (mouseButton == LEFT) {
+    p = new PVector(mouseX, mouseY, 0);    
+    drawHelperPoint(p);
+    basePoints.add(p);
+  } else if (mouseButton == RIGHT) {
+    clearHelperPoints();
+    pointSet = createSplinePoints(basePoints, splineResolution);
+    render(pointSet);
+    basePoints.clear();
+  }
+}
+
+void clearHelperPoints() {
+  PVector p;
+  ListIterator<PVector> i = basePoints.listIterator();
+
+  strokeWeight(3);  
+  stroke(bgColor);
+
+  while(i.hasNext()) {
+    p = i.next(); 
+    point(p.x, p.y, p.z);
+  }
+
+  stroke(fgColor);
+}
+
+
 PVector[] createSplinePoints(ArrayList<PVector> basePoints, int resolution) {
+
   if(basePoints.size() < 3) {
     return new PVector[0];
   } 
@@ -226,40 +177,28 @@ PVector[] createSplinePoints(ArrayList<PVector> basePoints, int resolution) {
   return result.toArray(pvArray);
 }
 
-void drawHelperPoint(PVector p) {
-  strokeWeight(3);
-  stroke(fgColor);
-  point(p.x, p.y, p.z);  
-}
+PVector[] generateEnvelope(int numPoints) {
+  PVector[] result;
+  ArrayList<PVector> basePoints = new ArrayList<PVector>();
 
-// events
-void mousePressed() {
+  int numBasePoints = (numPoints / splineResolution) + 1;
+  println("envelope spline basePoints: " + numBasePoints); 
+  //float xStep = xLength / numBasePoints;
+  float x, y;
   PVector p;
-  PVector[] pointSet;
 
-  if (mouseButton == LEFT) {
-    p = new PVector(mouseX, mouseY, 0);    
-    drawHelperPoint(p);
+  for(int i = 0; i < numBasePoints - 1; i++) {
+    //p = new PVector(i * xStep, maxValue + random(-spread, spread), 0.0);
+    p = new PVector(i * 10, random(baseRadius - radiusSpread, baseRadius + radiusSpread), 0.0);
     basePoints.add(p);
-  } else if (mouseButton == RIGHT) {
-    clearHelperPoints();
-    pointSet = createSplinePoints(basePoints, splineResolution);
-    render(pointSet);
-    basePoints.clear();
-  }
-}
-
-void clearHelperPoints() {
-  PVector p;
-  ListIterator<PVector> i = basePoints.listIterator();
-
-  strokeWeight(3);  
-  stroke(bgColor);
-
-  while(i.hasNext()) {
-    p = i.next(); 
     point(p.x, p.y, p.z);
-  }
+  }  
 
-  stroke(fgColor);
+  p = new PVector(numBasePoints * 10, 0.0, 0.0);
+  basePoints.add(p);
+
+  result = createSplinePoints(basePoints, splineResolution);
+  println("envelope size: " + result.length);
+  return result;
 }
+
